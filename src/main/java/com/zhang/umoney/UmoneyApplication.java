@@ -1,16 +1,12 @@
 package com.zhang.umoney;
 
-import com.jd.open.api.sdk.DefaultJdClient;
-import com.jd.open.api.sdk.JdClient;
-import com.jd.open.api.sdk.JdException;
-import jd.union.open.category.goods.get.request.CategoryReq;
-import jd.union.open.category.goods.get.request.UnionOpenCategoryGoodsGetRequest;
-import jd.union.open.category.goods.get.response.UnionOpenCategoryGoodsGetResponse;
-import org.springframework.boot.SpringApplication;
+
 import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.web.bind.annotation.RequestMapping;
 
 import java.security.MessageDigest;
-import java.time.Duration;
+import java.text.SimpleDateFormat;
+import java.util.Date;
 import java.util.Map;
 import java.util.TreeMap;
 
@@ -63,23 +59,49 @@ public class UmoneyApplication {
         }
         return true;
     }
-    // Time out value of getting promotion goods
-//    private final static int PROMOTION_GOODS_TIMEOUT = 5000;
-//    // http client
-//    private HttpClient client = HttpClient.newBuilder()
-//            .connectTimeout(Duration.ofMillis(PROMOTION_GOODS_TIMEOUT))
-//            .followRedirects(HttpClient.Redirect.NORMAL)
-//            .build();
 
-
-    public static void main(String[] args) throws JdException {
+    public static void main(String[] args) throws Exception {
 //    	SpringApplication.run(UmoneyApplication.class, args);
-        JdClient client=new DefaultJdClient(SERVER_URL,APP_TOKEN,APP_KEY,APP_SECRET);
-        UnionOpenCategoryGoodsGetRequest request=new UnionOpenCategoryGoodsGetRequest();
-        CategoryReq req=new CategoryReq();
-        request.setReq(req);
-        UnionOpenCategoryGoodsGetResponse response=client.execute(request);
+        UmoneyApplication um = new UmoneyApplication();
+        SimpleDateFormat df = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");//设置日期格式
+        String timestamp = df.format(new Date());// new Date()为获取当前系统时间
+        String sign = um.buildSign(timestamp, "1.0", "md5", "json", "jd.union.open.order.query", "", "", APP_KEY, APP_SECRET);
+    }
+    //处理http请求  requestUrl为请求地址  requestMethod请求方式，值为"GET"或"POST"
+    public static String httpRequest(String requestUrl,String requestMethod,String outputStr){
+        StringBuffer buffer=null;
+        try{
+            URL url=new URL(requestUrl);
+            HttpURLConnection conn=(HttpURLConnection)url.openConnection();
+            conn.setDoOutput(true);
+            conn.setDoInput(true);
+            conn.setRequestMethod(requestMethod);
+            conn.connect();
+            //往服务器端写内容 也就是发起http请求需要带的参数
+            if(null!=outputStr){
+                OutputStream os=conn.getOutputStream();
+                os.write(outputStr.getBytes("utf-8"));
+                os.close();
+            }
 
+            //读取服务器端返回的内容
+            InputStream is=conn.getInputStream();
+            InputStreamReader isr=new InputStreamReader(is,"utf-8");
+            BufferedReader br=new BufferedReader(isr);
+            buffer=new StringBuffer();
+            String line=null;
+            while((line=br.readLine())!=null){
+                buffer.append(line);
+            }
+        }catch(Exception e){
+            e.printStackTrace();
+        }
+        return buffer.toString();
+    }
+
+    @RequestMapping("/index")
+    public String getUser() {
+        return "hello";
     }
 
     private String buildSign(String timestamp,
@@ -101,7 +123,8 @@ public class UmoneyApplication {
         map.put("method", method);
 
         //param_json为空的时候需要写成 "{}"
-        map.put("param_json", paramJson);
+//        map.put("param_json", paramJson);
+        map.put("param_json", {});
         map.put("access_token", accessToken);
         map.put("app_key", appKey);
         StringBuilder sb = new StringBuilder(appSecret);
